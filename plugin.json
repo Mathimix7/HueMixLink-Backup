@@ -1,0 +1,19 @@
+{
+    "id": "nas_backup",
+    "plugin_id": "02bafe99-5dd1-4fe5-8b9c-581114d56263",
+    "module": "plugins.nas_backup.plugin",
+    "enabled": true,
+    "version": "1.2.0",
+    "options": {},
+    "metadata": {
+        "author": "Mathimix",
+        "license": "MIT"
+    },
+    "home_box": {
+        "name": "NAS Backups",
+        "description": "Daily off-box backups to NAS",
+        "icon": "fa-hdd",
+        "color": "#4f46e5",
+        "link": "/plugins/nas_backup"
+    }
+}

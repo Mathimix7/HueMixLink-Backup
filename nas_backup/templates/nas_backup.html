@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}NAS Backups - HueMix-Link{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-4xl pb-1 font-bold bg-gradient-to-r from-indigo-600 to-cyan-500 bg-clip-text text-transparent mb-1">
+                    NAS Backups
+                </h1>
+                <p class="text-gray-600">Daily off-box backups of HueMix-Link to your NAS</p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="runBackupNow()" id="backup-now-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center">
+                    <i class="fas fa-hdd mr-2"></i>Backup now
+                </button>
+                <button onclick="openRestoreModal()" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors inline-flex items-center">
+                    <i class="fas fa-clock-rotate-left mr-2"></i>Restore
+                </button>
+                <a href="/" class="px-4 py-2 bg-zinc-500 text-white rounded-lg hover:bg-zinc-600 transition-colors inline-flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-notification" class="hidden fixed top-4 right-4 z-50 max-w-md">
+        <div id="toast-container" class="rounded-lg shadow-2xl border-l-4 border-green-500 p-4 flex items-start space-x-3 transform transition-all duration-300 ease-out bg-green-50 translate-x-full opacity-0">
+            <div class="flex-shrink-0">
+                <i id="toast-icon" class="fas fa-check-circle text-2xl text-green-600"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p id="toast-title" class="text-sm font-semibold text-gray-900"></p>
+                <p id="toast-message" class="text-sm text-gray-700 mt-1"></p>
+            </div>
+            <button onclick="hideToast()" class="flex-shrink-0 inline-flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="setup-banner" class="hidden mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <i class="fas fa-circle-exclamation mr-2"></i><strong>Not set up yet.</strong> Enter a NAS destination below and press Save — daily backups start automatically.
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            <i class="fas fa-circle-info mr-2 text-indigo-600"></i>Status
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="rounded-xl border border-gray-200 p-4">
+                <p class="flex items-center text-xs uppercase tracking-wide text-gray-500">
+                    <span id="dot-state" class="inline-block h-2.5 w-2.5 rounded-full bg-gray-300 mr-2"></span>State
+                </p>
+                <p class="text-lg font-semibold mt-1" id="st-state">…</p>
+                <p class="text-xs text-gray-500 truncate" id="st-state-detail" title="">…</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 p-4">
+                <p class="flex items-center text-xs uppercase tracking-wide text-gray-500">
+                    <span id="dot-last" class="inline-block h-2.5 w-2.5 rounded-full bg-gray-300 mr-2"></span>Last backup
+                </p>
+                <p class="text-lg font-semibold mt-1" id="st-last">…</p>
+                <p class="text-xs text-gray-500 truncate" id="st-last-detail" title="">…</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 p-4">
+                <p class="flex items-center text-xs uppercase tracking-wide text-gray-500">
+                    <span id="dot-next" class="inline-block h-2.5 w-2.5 rounded-full bg-gray-300 mr-2"></span>Next backup
+                </p>
+                <p class="text-lg font-semibold mt-1" id="st-next">…</p>
+                <p class="text-xs text-gray-500" id="st-next-detail">…</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            <i class="fas fa-gear mr-2 text-indigo-600"></i>Destination &amp; schedule
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700">NAS path</label>
+                <input id="cfg-nas-path" type="text" placeholder="smb://192.168.1.10/backups  or  \\NAS\HueMixBackup  or  Z:\HueMixBackups"
+                    class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                <p class="text-xs text-gray-400 mt-1">smb:// signs in with the username/password below on any OS. Other paths use the OS session.</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Username <span class="font-normal text-gray-400">(smb:// only)</span></label>
+                <input id="cfg-username" type="text" autocomplete="off"
+                    class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Password <span class="font-normal text-gray-400">(optional)</span></label>
+                <input id="cfg-password" type="password" autocomplete="new-password" placeholder="Leave blank to keep"
+                    class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Daily time</label>
+                <input id="cfg-time" type="time"
+                    class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Backups to keep</label>
+                <input id="cfg-retention" type="number" min="1" max="365"
+                    class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+        </div>
+        <div class="mt-4 flex items-center space-x-3">
+            <button onclick="saveConfig()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
+            <button onclick="testConnection()" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Test</button>
+            <button onclick="clearPassword()" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Clear password</button>
+        </div>
+    </div>
+
+    <div id="restore-modal" class="hidden fixed z-50 inset-0 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeRestoreModal()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">
+                            <i class="fas fa-clock-rotate-left mr-2 text-amber-600"></i>Restore from NAS
+                        </h3>
+                        <button onclick="closeRestoreModal()" class="text-gray-400 hover:text-gray-500 p-2">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="restore-list" class="space-y-2 max-h-80 overflow-y-auto"></div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" onclick="closeRestoreModal()" class="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:w-auto sm:text-sm">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('nas_backup.static', filename='js/nas_backup.js') }}"></script>
+{% endblock %}
