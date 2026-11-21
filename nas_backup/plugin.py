@@ -95,7 +95,7 @@ class NasBackupPlugin:
         if configured:
             try:
                 dest = self._backup_dir()
-                nas_files = dest.list_backups()[:5]
+                nas_files = dest.list_backups()
             except Exception as exc:
                 nas_error = self._short_error(exc)
         return jsonify({

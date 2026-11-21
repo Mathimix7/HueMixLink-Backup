@@ -378,16 +378,29 @@ class SmbBackupStore:
             self._close(connection, tree)
 
     def list_backups(self) -> list[dict[str, Any]]:
-        from smbprotocol.open import FileInformationClass
+        from smbprotocol.exceptions import NoMoreFiles, NoSuchFile
+        from smbprotocol.open import FileAttributes, FileInformationClass, QueryDirectoryFlags
 
         connection = tree = None
         try:
             connection, tree = self._tree()
             handle = self._open_dir(tree, self.subpath or '\\')
+            entries = []
             try:
-                entries = handle.query_directory(
-                    '*', FileInformationClass.FILE_FULL_DIRECTORY_INFORMATION
-                )
+                flags = QueryDirectoryFlags.SMB2_RESTART_SCANS
+                while True:
+                    try:
+                        batch = handle.query_directory(
+                            '*',
+                            FileInformationClass.FILE_FULL_DIRECTORY_INFORMATION,
+                            flags=flags,
+                        )
+                    except (NoMoreFiles, NoSuchFile):
+                        break
+                    if not batch:
+                        break
+                    entries.extend(batch)
+                    flags = 0
                 handle.close()
             except Exception:
                 try:
@@ -397,6 +410,9 @@ class SmbBackupStore:
                 raise
             out = []
             for item in entries:
+                attrs = int(_value(item, 'file_attributes') or 0)
+                if attrs & FileAttributes.FILE_ATTRIBUTE_DIRECTORY:
+                    continue
                 fname = _value(item, 'file_name')
                 if isinstance(fname, bytes):
                     fname = fname.decode('utf-16-le', errors='replace')
